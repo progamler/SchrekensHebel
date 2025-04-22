@@ -250,7 +250,7 @@ void setup()
   uint8_t mac[6];
   sscanf(STAMAC, "%hhx:%hhx:%hhx:%hhx:%hhx:%hhx", &mac[0], &mac[1], &mac[2], &mac[3], &mac[4], &mac[5]); // Lese MAC aus String
   WiFi.macAddress(mac);                                                                                  // optional: aktuelle MAC auslesen
-  WiFi.setMacAddress(mac);                                                                               // Setze MAC-Adresse
+  //WiFi.setMacAddress(mac);                                                                               // Setze MAC-Adresse
 
   // Verbinde mit dem WLAN
   WiFi.mode(WIFI_STA);        // Setze WLAN-Modus auf Station
