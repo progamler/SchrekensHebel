@@ -25,16 +25,16 @@ jobs:
     - name: Install RP2040 board package
       run: |
         arduino-cli core update-index
-        arduino-cli core install arduino:mbed_rp2040
-
-    - name: Install libraries
-      run: |
-        arduino-cli lib install ESP8266WebServer
-        arduino-cli lib install WiFi
-        arduino-cli lib install ArduinoOTA
-        arduino-cli lib install Time
-        arduino-cli lib install Adafruit NeoPixel
+        arduino-cli core install rp2040:rp2040 --additional-urls https://github.com/earlephilhower/arduino-pico/releases/download/global/package_rp2040_index.json
+        #arduino-cli core install esp8266:esp8266 --additional-urls https://arduino.esp8266.com/stable/package_esp8266com_index.json
+    #- name: Install libraries
+    #  run: |
+    #    arduino-cli lib install ESP8266WebServer
+    #    arduino-cli lib install WiFi
+    #    arduino-cli lib install ArduinoOTA
+    #    arduino-cli lib install Time
+    #    arduino-cli lib install Adafruit NeoPixel
 
     - name: Compile Arduino code
       run: |
-        arduino-cli compile --fqbn rp2040:rp2040:rpipicow SchrekensHebel.ino
+        arduino-cli compile --fqbn arduino:mbed_rp2040:rpipicow SchrekensHebel.ino
