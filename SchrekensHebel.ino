@@ -9,6 +9,7 @@
 #define LNUMPIXELS 7 // Anzahl der Lampen-LEDs
 #define CNUMPIXELS 4 // Anzahl der Case-LEDs
 
+
 #ifndef STASSID
 #define STASSID "XXX"              // WLAN-SSID
 #define STAPSK "XXX"          // WLAN-Passwort
