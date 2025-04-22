@@ -23,6 +23,10 @@
 #define FAKEMAC "00:11:22:33:44:66"  // Define a fallback value
 #endif
 
+#ifndef OTA_PASS
+#define OTA_PASS "FALLBACK_OTA_PASS" // Define a fallback value
+#endif
+
 #define STASSID WLAN_SSID         // WLAN-SSID from repository secrets
 #define STAPSK WLAN_PW      // WLAN-Passwort from repository secrets
 #define STAMAC FAKEMAC // WLAN-MAC-Adresse
