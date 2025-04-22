@@ -11,9 +11,21 @@
 
 
 #ifndef STASSID
-#define STASSID "XXX"              // WLAN-SSID
-#define STAPSK "XXX"          // WLAN-Passwort
-#define STAMAC "d8:3a:dd:21:ca:0d" // WLAN-MAC-Adresse
+#ifndef WLAN_SSID
+#define WLAN_SSID "FALLBACK_SSID"      // Define a fallback value
+#endif
+
+#ifndef WLAN_PW
+#define WLAN_PW "FALLBACK_PASSWORD"  // Define a fallback value
+#endif
+
+#ifndef FAKEMAC
+#define FAKEMAC "00:11:22:33:44:66"  // Define a fallback value
+#endif
+
+#define STASSID WLAN_SSID         // WLAN-SSID from repository secrets
+#define STAPSK WLAN_PW      // WLAN-Passwort from repository secrets
+#define STAMAC FAKEMAC // WLAN-MAC-Adresse
 #define WIFIIP IPAddress(10, 42, 131, 216)  // WLAN-IP-Adresse
 #define WIFIMASK IPAddress(255, 255, 255, 0)  // WLAN-Subnetzmaske
 #define WIFIGW IPAddress(10, 42, 131, 1)    // WLAN-Gateway
@@ -199,6 +211,7 @@ void handleChunked()
 void setupOTA()
 {
   ArduinoOTA.setHostname("TerrorHebel"); // Setze Hostname
+  ArduinoOTA.setPassword(OTA_PASS); // Setze Passwort
 
   ArduinoOTA.onStart([]()
                      {
@@ -265,7 +278,7 @@ void setup()
     delay(5000);
     rp2040.restart(); // Neustart bei Fehler
   }
-  wifi.config(WIFIIP, WIFIMASK, WIFIGW, WIFIDNS); // Setze IP-Adresse, Subnetzmaske, Gateway und DNS-Server
+  WiFi.config(WIFIIP, WIFIMASK, WIFIGW, WIFIDNS); // Setze IP-Adresse, Subnetzmaske, Gateway und DNS-Server
   Serial.print("IP address: ");
   Serial.println(WiFi.localIP()); // Ausgabe der IP-Adresse
   Serial.print("MAC address: ");
