@@ -36,7 +36,7 @@ jobs:
 
     - name: Install libraries
       run: |
-        arduino-cli lib install Adafruit_NeoPixel
+        arduino-cli lib install 'Adafruit NeoPixel'
 
     - name: Compile Arduino code
       run: |
