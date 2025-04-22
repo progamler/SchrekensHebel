@@ -14,6 +14,10 @@
 #define STASSID "XXX"              // WLAN-SSID
 #define STAPSK "XXX"          // WLAN-Passwort
 #define STAMAC "d8:3a:dd:21:ca:0d" // WLAN-MAC-Adresse
+#define WIFIIP IPAddress(10, 42, 131, 216)  // WLAN-IP-Adresse
+#define WIFIMASK IPAddress(255, 255, 255, 0)  // WLAN-Subnetzmaske
+#define WIFIGW IPAddress(10, 42, 131, 1)    // WLAN-Gateway
+#define WIFIDNS IPAddress(8, 8, 8, 8)      // WLAN-DNS-Server
 #endif
 
 const char *ssid = STASSID;    // SSID als Konstante
@@ -261,6 +265,32 @@ void setup()
     delay(5000);
     rp2040.restart(); // Neustart bei Fehler
   }
+  wifi.config(WIFIIP, WIFIMASK, WIFIGW, WIFIDNS); // Setze IP-Adresse, Subnetzmaske, Gateway und DNS-Server
+  Serial.print("IP address: ");
+  Serial.println(WiFi.localIP()); // Ausgabe der IP-Adresse
+  Serial.print("MAC address: ");
+  Serial.println(WiFi.macAddress()); // Ausgabe der MAC-Adresse
+  Serial.print("DNS address: ");
+  Serial.println(WiFi.dnsIP()); // Ausgabe der DNS-Adresse
+  Serial.print("Gateway address: ");
+  Serial.println(WiFi.gatewayIP()); // Ausgabe der Gateway-Adresse
+  Serial.print("Subnet mask: ");
+  Serial.println(WiFi.subnetMask()); // Ausgabe der Subnetzmaske
+  Serial.print("WiFi signal strength: ");
+  Serial.println(WiFi.RSSI()); // Ausgabe der WLAN-Signalstärke
+  Serial.print("WiFi channel: ");
+  Serial.println(WiFi.channel()); // Ausgabe des WLAN-Kanals
+  Serial.print("WiFi mode: ");
+  Serial.println(WiFi.getMode()); // Ausgabe des WLAN-Modus
+  Serial.print("WiFi hostname: ");
+  Serial.println(WiFi.getHostname()); // Ausgabe des Hostnamens
+  Serial.print("WiFi BSSID: ");
+  Serial.println(WiFi.BSSIDstr()); // Ausgabe der BSSID
+  Serial.print("WiFi SSID: ");
+  Serial.println(WiFi.SSID()); // Ausgabe der SSID
+  Serial.print("WiFi encryption type: ");
+  Serial.println(WiFi.encryptionType()); // Ausgabe des Verschlüsselungstyps
+
 
   setupOTA();    // Initialisiere OTA
   setupServer(); // Initialisiere Webserver
