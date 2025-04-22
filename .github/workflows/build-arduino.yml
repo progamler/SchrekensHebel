@@ -22,7 +22,11 @@ jobs:
       with:
         version: 0.32.0 # Specify a stable version
 
-
+    - name: download board package json to /home/runner/.arduino15/package_pico_index.template.json
+      run: |
+        mkdir -p /home/runner/.arduino15
+        curl -L -o /home/runner/.arduino15/package_pico_index.template.json https://github.com/earlephilhower/arduino-pico/releases/latest/download/package_rp2040_index.json
+        cat /home/runner/.arduino15/package_pico_index.template.json
         
     - name: Install RP2040 board package
       run: |
