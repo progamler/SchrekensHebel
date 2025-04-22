@@ -1,0 +1,39 @@
+name: Build Arduino RP2040
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    - name: Set up Arduino CLI
+      uses: arduino/setup-arduino-cli@v1
+      with:
+        version: latest
+
+    - name: Install RP2040 board package
+      run: |
+        arduino-cli core update-index
+        arduino-cli core install rp2040:rp2040
+
+    - name: Install libraries
+      run: |
+        arduino-cli lib install ESP8266WebServer
+        arduino-cli lib install WiFi
+        arduino-cli lib install ArduinoOTA
+        arduino-cli lib install Time
+        arduino-cli lib install Adafruit NeoPixel
+
+    - name: Compile Arduino code
+      run: |
+        arduino-cli compile --fqbn rp2040:rp2040:rpipicow SchrekensHebel.ino
