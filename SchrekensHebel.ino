@@ -284,13 +284,7 @@ void setup()
   Serial.println(WiFi.getMode()); // Ausgabe des WLAN-Modus
   Serial.print("WiFi hostname: ");
   Serial.println(WiFi.getHostname()); // Ausgabe des Hostnamens
-  Serial.print("WiFi BSSID: ");
-  Serial.println(WiFi.BSSIDstr()); // Ausgabe der BSSID
-  Serial.print("WiFi SSID: ");
-  Serial.println(WiFi.SSID()); // Ausgabe der SSID
-  Serial.print("WiFi encryption type: ");
-  Serial.println(WiFi.encryptionType()); // Ausgabe des Verschlüsselungstyps
-
+  
 
   setupOTA();    // Initialisiere OTA
   setupServer(); // Initialisiere Webserver
