@@ -1,148 +1,216 @@
-#include <ESP8266WebServer.h>
-#include <HTTPServer.h>
-#include <HTTP_Method.h>
-#include <Uri.h>
-#include <WebServer.h>
-#include <WebServerSecure.h>
-#include <WebServerTemplate.h>
-#include <WiFi.h>
-#include <SimpleMDNS.h>
-#include <WiFiUdp.h>
-#include <ArduinoOTA.h>
-#include <time.h>
-#include <sys/time.h>
-#include <Adafruit_NeoPixel.h>
-#ifdef __AVR__
-#include <avr/power.h>  // Required for 16 MHz Adafruit Trinket
-#endif
+#include <ESP8266WebServer.h>  // Bibliothek für Webserver-Funktionalität
+#include <WiFi.h>              // Bibliothek für WLAN-Funktionalität
+#include <ArduinoOTA.h>        // Bibliothek für Over-the-Air Updates
+#include <time.h>              // Bibliothek für Zeitfunktionen
+#include <Adafruit_NeoPixel.h> // Bibliothek für NeoPixel-LEDs
 
-#define LAMPPIN 5 // On Trinket or Gemma, suggest changing this to 1
-#define CASEPIN 4
-#define LNUMPIXELS 7  // Popular NeoPixel ring size
-#define CNUMPIXELS 4
+#define LAMPPIN 5    // Pin für Lampen-LEDs
+#define CASEPIN 4    // Pin für Case-LEDs
+#define LNUMPIXELS 7 // Anzahl der Lampen-LEDs
+#define CNUMPIXELS 4 // Anzahl der Case-LEDs
 
 #ifndef STASSID
-#define STASSID "JFZ"
-#define STAPSK "clubmate"
-#define STAMAC "d8:3a:dd:21:ca:0d"
+#define STASSID "XXX"              // WLAN-SSID
+#define STAPSK "XXX"          // WLAN-Passwort
+#define STAMAC "d8:3a:dd:21:ca:0d" // WLAN-MAC-Adresse
 #endif
 
+const char *ssid = STASSID;    // SSID als Konstante
+const char *password = STAPSK; // Passwort als Konstante
 
-const char* ssid = STASSID;
-const char* password = STAPSK;
+bool open = false;                                                        // Status: offen oder geschlossen
+long int uhrzeit;                                                         // Zeitvariable für nächste Änderung
+ESP8266WebServer server(80);                                              // Webserver auf Port 80
+Adafruit_NeoPixel LAMPpixels(LNUMPIXELS, LAMPPIN, NEO_GRBW + NEO_KHZ800); // Lampen-LEDs
+Adafruit_NeoPixel CASEpixels(CNUMPIXELS, CASEPIN, NEO_GRBW + NEO_KHZ800); // Case-LEDs
 
-bool open = false;
-long int uhrzeit;
-ESP8266WebServer server(80);
-Adafruit_NeoPixel LAMPpixels(LNUMPIXELS, LAMPPIN, NEO_GRBW + NEO_KHZ800);
-Adafruit_NeoPixel CASEpixels(CNUMPIXELS, CASEPIN, NEO_GRBW + NEO_KHZ800);
+String bigChunk; // Beispiel-String für Chunked Response
 
-String bigChunk;
-
-void setClock() {
-  NTP.begin("pool.ntp.org", "time.nist.gov");
+// Funktion zum Setzen der Systemzeit per NTP
+void setClock()
+{
+  NTP.begin("pool.ntp.org", "time.nist.gov"); // Starte NTP mit Servern
   Serial.print("Waiting for NTP time sync: ");
-  time_t now = time(nullptr);
-  while (now < 8 * 3600 * 2) {
+  time_t now = time(nullptr); // Hole aktuelle Zeit
+  while (now < 8 * 3600 * 2)
+  { // Warte bis Zeit synchronisiert ist
     delay(500);
     Serial.print(".");
     now = time(nullptr);
   }
   Serial.println("");
   struct tm timeinfo;
-  gmtime_r(&now, &timeinfo);
+  gmtime_r(&now, &timeinfo); // Hole Zeitstruktur
   Serial.print("Current time: ");
-  Serial.print(asctime(&timeinfo));
+  Serial.print(asctime(&timeinfo)); // Ausgabe der aktuellen Zeit
 }
 
-int incomingByte = 0; // for incoming serial data
-int sendCommand(const char* command) {
+// Funktion zum Senden eines Kommandos über die serielle Schnittstelle
+int sendCommand(const char *command)
+{
   Serial.print("Sending: ");
   Serial.println(command);
-  Serial1.println(command);
-  // wait for reply 
-  while(Serial.available() == 0) {
-    incomingByte = Serial1.read();
+  Serial1.println(command); // Sende Kommando an Serial1
+  while (Serial.available() == 0)
+  { // Warte auf Antwort
+    int incomingByte = Serial1.read();
     Serial.print("I received: ");
     Serial.println(incomingByte, DEC);
-    return incomingByte;
-    //delay(500);
+    return incomingByte; // Rückgabe des empfangenen Bytes
   }
-  return 0;  
+  return 0;
 }
 
-void updateStatus() {
-  int q = sendCommand("q");
-  LAMPpixels.clear();
-  if (q == 49) {
-    open = true;
-  for (int i = 0; i < LNUMPIXELS; i++) {
-    LAMPpixels.setPixelColor(i, LAMPpixels.Color(0, 255, 0));
-    
-  }     
-  } else {
-    open = false;
-   for (int i = 0; i < LNUMPIXELS; i++) {
-    LAMPpixels.setPixelColor(i, LAMPpixels.Color(255, 0, 0));
-    
-  }  
+// Setzt den Status der Lampen-LEDs je nach Offen/Zu
+void setLampStatus(bool isOpen)
+{
+  LAMPpixels.clear();                                                                  // Alle LEDs ausschalten
+  uint32_t color = isOpen ? LAMPpixels.Color(0, 255, 0) : LAMPpixels.Color(255, 0, 0); // Grün wenn offen, rot wenn zu
+  for (int i = 0; i < LNUMPIXELS; i++)
+  {
+    LAMPpixels.setPixelColor(i, color); // Setze Farbe für jede LED
   }
-  LAMPpixels.show();
-  //delay(5000);
+  LAMPpixels.show(); // Zeige die Änderung an
+}
+
+// Aktualisiert den Status (offen/zu) und setzt LEDs entsprechend
+void updateStatus()
+{
+  static int lastQ = -1;    // Letzter Status
+  int q = sendCommand("q"); // Frage aktuellen Status ab
+  // Prüfe auf Änderung und ob q 0, 1 oder '?' ist
+  if (q != lastQ && (q == 0 || q == 1 || q == '?'))
+  {
+    switch (q)
+    {
+    case 0:
+      Serial.println("Status: closed"); // Status "zu"
+      // sendCommand("<CHAR>"); // TODO: Ersetze <CHAR> durch das gewünschte Zeichen
+      break;
+    case 1:
+      Serial.println("Status: open"); // Status "offen"
+      // sendCommand("<CHAR>"); // TODO: Ersetze <CHAR> durch das gewünschte Zeichen
+      break;
+    case '?':
+      Serial.println("Status: unknown"); // Status unbekannt
+      // sendCommand("<CHAR>"); // TODO: Ersetze <CHAR> durch das gewünschte Zeichen
+      break;
+    }
+  }
+  lastQ = q;           // Speichere aktuellen Status
+  open = (q == 49);    // Setze open auf true wenn q == 49 ('1')
+  setLampStatus(open); // Aktualisiere LEDs
   time_t now;
-  uhrzeit = time(&now);
-  uhrzeit += 5400;
-  Serial.println(uhrzeit);
-  Serial.println(open);
+  uhrzeit = time(&now) + 5400; // Setze nächste Änderungszeit (Beispielwert)
+  Serial.println(uhrzeit);     // Debug-Ausgabe
+  Serial.println(open);        // Debug-Ausgabe
 }
 
-void handleRoot() {
-  server.send(200, "text/plain", "hello from esp8266!\r\n");
+// Sendet den aktuellen Status als JSON an den Client
+void sendJsonState(bool withChange = false)
+{
+  String json = "{ \"state\": " + String(open ? "true" : "false");
+  if (withChange)
+  {
+    json += ", \"next_change\": \"" + String(uhrzeit) + "\"";
+  }
+  json += " }";
+  server.send(200, "application/json", json); // Sende JSON-Antwort
 }
 
-void openclosenow() {
-  String json = "{ \"state\": " + String(open ? "true" : "false") + " }";
+// Handler für die Root-URL
+void handleRoot()
+{
+  server.send(200, "text/plain", "hello from esp8266!\r\n"); // Sende einfachen Text
+}
+
+// Handler für /open-close/now
+void openclosenow()
+{
+  sendJsonState(false); // Sende Status ohne nächste Änderung
+}
+
+// Handler für /open-close/next-change
+void openclosechange()
+{
+  sendJsonState(true); // Sende Status mit nächster Änderung
+}
+
+// Handler für /spaceapi
+void handleSpaceAPI()
+{
+  String json = "{\n";
+  json += "  \"api\": \"0.15\",\n";
+  json += "  \"space\": \"C-Hack\",\n";
+  json += "  \"logo\": \"\",\n";
+  json += "  \"url\": \"https://c-hack.de/\",\n";
+  json += "  \"location\": {\n";
+  json += "    \"address\": \"Im Zwinger 4, 75365 Calw, Deutschland\",\n";
+  json += "    \"lat\": 48.7131,\n";
+  json += "    \"lon\": 8.7366\n";
+  json += "  },\n";
+  json += "  \"contact\": {\n";
+  json += "    \"email\": \"info@c-hack.de\",\n";
+  // json += "    \"twitter\": \"@chackcw\",\n";
+  // json += "    \"ml\": \"https://lists.c-hack.de/postorius/lists/c-hack.c-hack.de/\",\n";
+  // json += "    \"irc\": \"irc://irc.hackint.org/#c-hack\",\n";
+  // json += "    \"matrix\": \"#c-hack:matrix.org\"\n";
+  json += "  },\n";
+  json += "  \"state\": {\n";
+  json += "    \"open\": " + String(open ? "true" : "false") + "\n";
+  json += "  },\n";
+  json += "  \"projects\": [\n";
+  json += "    \"https://c-turm.c-hack.de\",\n";
+  json += "    // Weitere Projekt-URLs können hier ergänzt werden\n";
+  json += "  ]\n";
+  json += "  // Weitere Felder können hier einfach ergänzt werden\n";
+  json += "}\n";
   server.send(200, "application/json", json);
 }
 
-void openclosechange() {
-  String json = "{ \"state\": " + String(open ? "true" : "false") + ", \"next_change\": \"" + String(uhrzeit) + "\" }";
-  server.send(200, "application/json", json);
-}
-
-void handleNotFound() {
+// Handler für nicht gefundene Seiten
+void handleNotFound()
+{
   String message = "File Not Found\n\n";
   message += "URI: " + server.uri() + "\nMethod: " + (server.method() == HTTP_GET ? "GET" : "POST") + "\nArguments: " + String(server.args()) + "\n";
-  for (uint8_t i = 0; i < server.args(); i++) {
+  for (uint8_t i = 0; i < server.args(); i++)
+  {
     message += " " + server.argName(i) + ": " + server.arg(i) + "\n";
   }
-  server.send(404, "text/plain", message);
+  server.send(404, "text/plain", message); // Sende Fehlernachricht
 }
 
-void handleChunked() {
-  server.chunkedResponseModeStart(200, F("text/html"));
-  server.sendContent(bigChunk);
-  server.sendContent(F("chunk 2"));
-  server.sendContent(bigChunk);
-  server.chunkedResponseFinalize();
+// Beispiel für Chunked Response
+void handleChunked()
+{
+  server.chunkedResponseModeStart(200, F("text/html")); // Starte Chunked Response
+  server.sendContent(bigChunk);                         // Sende ersten Chunk
+  server.sendContent(F("chunk 2"));                     // Sende zweiten Chunk
+  server.sendContent(bigChunk);                         // Sende dritten Chunk
+  server.chunkedResponseFinalize();                     // Beende Chunked Response
 }
 
-void setupOTA() {
-  ArduinoOTA.setHostname("TerrorHebel");
-  //ArduinoOTA.setPassword("clubmate");
+// Initialisiert OTA (Over-the-Air Update)
+void setupOTA()
+{
+  ArduinoOTA.setHostname("TerrorHebel"); // Setze Hostname
 
-  ArduinoOTA.onStart([]() {
-    String type = (ArduinoOTA.getCommand() == U_FLASH) ? "sketch" : "filesystem";
-    Serial.println("Start updating " + type);
-  });
-  ArduinoOTA.onEnd([]() {
-    Serial.println("\nEnd");
-  });
-  ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
-    Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
-  });
-  ArduinoOTA.onError([](ota_error_t error) {
-    Serial.printf("Error[%u]: ", error);
+  ArduinoOTA.onStart([]()
+                     {
+                       String type = (ArduinoOTA.getCommand() == U_FLASH) ? "sketch" : "filesystem";
+                       Serial.println("Start updating " + type); // Ausgabe Update-Typ
+                     });
+  ArduinoOTA.onEnd([]()
+                   {
+                     Serial.println("\nEnd"); // Ausgabe bei Ende
+                   });
+  ArduinoOTA.onProgress([](unsigned int progress, unsigned int total)
+                        {
+                          Serial.printf("Progress: %u%%\r", (progress / (total / 100))); // Fortschrittsanzeige
+                        });
+  ArduinoOTA.onError([](ota_error_t error)
+                     {
+    Serial.printf("Error[%u]: ", error); // Fehlerausgabe
     if (error == OTA_AUTH_ERROR) {
       Serial.println("Auth Failed");
     } else if (error == OTA_BEGIN_ERROR) {
@@ -153,56 +221,60 @@ void setupOTA() {
       Serial.println("Receive Failed");
     } else if (error == OTA_END_ERROR) {
       Serial.println("End Failed");
-    }
-  });
-  ArduinoOTA.begin();
+    } });
+  ArduinoOTA.begin(); // Starte OTA
 }
 
-void setupServer() {
-  server.on("/", handleRoot);
-  server.on("/open-close/now", openclosenow);
-  server.on("/open-close/now/", openclosenow);
-  server.on("/open-close/next-change", openclosechange);
-  server.on("/open-close/next-change/", openclosechange);
-  server.onNotFound(handleNotFound);
-  server.begin();
+// Initialisiert den Webserver und registriert die Handler
+void setupServer()
+{
+  server.on("/", handleRoot);                             // Root-Handler
+  server.on("/open-close/now", openclosenow);             // Handler für aktuellen Status
+  server.on("/open-close/now/", openclosenow);            // Handler für aktuellen Status (mit Slash)
+  server.on("/open-close/next-change", openclosechange);  // Handler für nächste Änderung
+  server.on("/open-close/next-change/", openclosechange); // Handler für nächste Änderung (mit Slash)
+  server.on("/spaceapi", handleSpaceAPI);                 // SpaceAPI-Handler
+  server.onNotFound(handleNotFound);                      // Handler für nicht gefundene Seiten
+  server.begin();                                         // Starte Server
 }
 
-void setup() {
-  Serial.begin(9600);
-  Serial.println("Booting");
-  Serial1.begin(9600);
-  WiFi.mode(WIFI_STA);
-  WiFi.begin(ssid, password);
-  while (WiFi.waitForConnectResult() != WL_CONNECTED) {
+// Setup-Funktion, wird einmal beim Start ausgeführt
+void setup()
+{
+  Serial.begin(115200);      // Starte serielle Kommunikation
+  Serial.println("Booting"); // Debug-Ausgabe
+  Serial1.begin(9600);       // Starte zweite serielle Schnittstelle
+
+  // Setze die MAC-Adresse vor dem Verbindungsaufbau
+  uint8_t mac[6];
+  sscanf(STAMAC, "%hhx:%hhx:%hhx:%hhx:%hhx:%hhx", &mac[0], &mac[1], &mac[2], &mac[3], &mac[4], &mac[5]); // Lese MAC aus String
+  WiFi.macAddress(mac);                                                                                  // optional: aktuelle MAC auslesen
+  WiFi.setMacAddress(mac);                                                                               // Setze MAC-Adresse
+
+  // Verbinde mit dem WLAN
+  WiFi.mode(WIFI_STA);        // Setze WLAN-Modus auf Station
+  WiFi.begin(ssid, password); // Verbinde mit WLAN
+  while (WiFi.waitForConnectResult() != WL_CONNECTED)
+  { // Warte auf Verbindung
     Serial.println("Connection Failed! Rebooting...");
     delay(5000);
-    rp2040.restart();
+    rp2040.restart(); // Neustart bei Fehler
   }
 
-  setupOTA();
-  setupServer();
+  setupOTA();    // Initialisiere OTA
+  setupServer(); // Initialisiere Webserver
 
-  LAMPpixels.begin();
-  LAMPpixels.clear();
+  LAMPpixels.begin(); // Initialisiere Lampen-LEDs
+  LAMPpixels.clear(); // Schalte alle LEDs aus
 
-  setClock();
-    for (int i = 0; i < LNUMPIXELS; i++) {
-    LAMPpixels.setPixelColor(i, LAMPpixels.Color(255, 255, 255));
-    LAMPpixels.show();
-  }
+  setClock();           // Setze Systemzeit per NTP
+  setLampStatus(false); // Setze Lampenstatus auf "zu"
 }
 
-
-
-
-void loop() {
-  ArduinoOTA.handle();
-  server.handleClient();
-
-
-  //sendCommand("q");  
-  updateStatus();
-
-  //delay(500);
+// Hauptschleife, wird ständig ausgeführt
+void loop()
+{
+  ArduinoOTA.handle();   // Bearbeite OTA-Events
+  server.handleClient(); // Bearbeite Webserver-Requests
+  updateStatus();        // Aktualisiere Status und LEDs
 }
