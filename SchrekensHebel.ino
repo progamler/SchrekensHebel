@@ -12,11 +12,11 @@
 
 #ifndef STASSID
 #ifndef WLAN_SSID
-#define WLAN_SSID "FALLBACK_SSID"      // Define a fallback value
+#define WLAN_SSID "JFZ"      // Define a fallback value
 #endif
 
 #ifndef WLAN_PW
-#define WLAN_PW "FALLBACK_PASSWORD"  // Define a fallback value
+#define WLAN_PW "clubmate"  // Define a fallback value
 #endif
 
 #ifndef FAKEMAC
@@ -24,11 +24,11 @@
 #endif
 
 #ifndef OTA_PASS
-#define OTA_PASS "FALLBACK_OTA_PASS" // Define a fallback value
+#define OTA_PASS "clubmate" // Define a fallback value
 #endif
 
-#define STASSID WLAN_SSID         // WLAN-SSID from repository secrets
-#define STAPSK WLAN_PW      // WLAN-Passwort from repository secrets
+#define STASSID "JFZ"         // WLAN-SSID from repository secrets
+#define STAPSK "clubmate"      // WLAN-Passwort from repository secrets
 #define STAMAC FAKEMAC // WLAN-MAC-Adresse
 #define WIFIIP IPAddress(10, 42, 131, 216)  // WLAN-IP-Adresse
 #define WIFIMASK IPAddress(255, 255, 255, 0)  // WLAN-Subnetzmaske
@@ -98,21 +98,23 @@ void setLampStatus(bool isOpen)
 void updateStatus()
 {
   static int lastQ = -1;    // Letzter Status
+  Serial.print("LastQ: ");
+  Serial.print(lastQ);
   int q = sendCommand("q"); // Frage aktuellen Status ab
   // Prüfe auf Änderung und ob q 0, 1 oder '?' ist
   if (q != lastQ && (q == 0 || q == 1 || q == '?'))
   {
     switch (q)
     {
-    case 0:
+    case 49:
       Serial.println("Status: closed"); // Status "zu"
       // sendCommand("<CHAR>"); // TODO: Ersetze <CHAR> durch das gewünschte Zeichen
       break;
-    case 1:
+    case 48:
       Serial.println("Status: open"); // Status "offen"
       // sendCommand("<CHAR>"); // TODO: Ersetze <CHAR> durch das gewünschte Zeichen
       break;
-    case '?':
+    case 63:
       Serial.println("Status: unknown"); // Status unbekannt
       // sendCommand("<CHAR>"); // TODO: Ersetze <CHAR> durch das gewünschte Zeichen
       break;
@@ -161,9 +163,9 @@ void openclosechange()
 void handleSpaceAPI()
 {
   String json = "{\n";
-  json += "  \"api\": \"0.15\",\n";
+  json += "  \"api_compatibility\": [\"14\", \"15\"],\n";
   json += "  \"space\": \"C-Hack\",\n";
-  json += "  \"logo\": \"\",\n";
+  json += "  \"logo\": \"https://c-hack.de/wp-content/uploads/2015/06/c-hack_sparkling1.png\",\n";
   json += "  \"url\": \"https://c-hack.de/\",\n";
   json += "  \"location\": {\n";
   json += "    \"address\": \"Im Zwinger 4, 75365 Calw, Deutschland\",\n";
@@ -171,7 +173,7 @@ void handleSpaceAPI()
   json += "    \"lon\": 8.7366\n";
   json += "  },\n";
   json += "  \"contact\": {\n";
-  json += "    \"email\": \"info@c-hack.de\",\n";
+  json += "    \"email\": \"info@c-hack.de\"\n";
   // json += "    \"twitter\": \"@chackcw\",\n";
   // json += "    \"ml\": \"https://lists.c-hack.de/postorius/lists/c-hack.c-hack.de/\",\n";
   // json += "    \"irc\": \"irc://irc.hackint.org/#c-hack\",\n";
@@ -181,10 +183,8 @@ void handleSpaceAPI()
   json += "    \"open\": " + String(open ? "true" : "false") + "\n";
   json += "  },\n";
   json += "  \"projects\": [\n";
-  json += "    \"https://c-turm.c-hack.de\",\n";
-  json += "    // Weitere Projekt-URLs können hier ergänzt werden\n";
+  json += "    \"https://c-turm.c-hack.de\"\n";
   json += "  ]\n";
-  json += "  // Weitere Felder können hier einfach ergänzt werden\n";
   json += "}\n";
   server.send(200, "application/json", json);
 }
@@ -282,7 +282,7 @@ void setup()
     delay(5000);
     rp2040.restart(); // Neustart bei Fehler
   }
-  WiFi.config(WIFIIP, WIFIMASK, WIFIGW, WIFIDNS); // Setze IP-Adresse, Subnetzmaske, Gateway und DNS-Server
+  //WiFi.config(WIFIIP, WIFIMASK, WIFIGW, WIFIDNS); // Setze IP-Adresse, Subnetzmaske, Gateway und DNS-Server
   Serial.print("IP address: ");
   Serial.println(WiFi.localIP()); // Ausgabe der IP-Adresse
   Serial.print("MAC address: ");
@@ -309,8 +309,13 @@ void setup()
   LAMPpixels.begin(); // Initialisiere Lampen-LEDs
   LAMPpixels.clear(); // Schalte alle LEDs aus
 
+  CASEpixels.begin();
+  CASEpixels.clear();
+  CASEpixels.setPixelColor(0, LAMPpixels.Color(0, 255, 0) );
+  CASEpixels.show();
   setClock();           // Setze Systemzeit per NTP
   setLampStatus(false); // Setze Lampenstatus auf "zu"
+  sendCommand("0");
 }
 
 // Hauptschleife, wird ständig ausgeführt
